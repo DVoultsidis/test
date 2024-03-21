@@ -57,3 +57,10 @@ client.connect(broker_address, port, 60)
 
 # Start the MQTT loop
 client.loop_forever()
+
+
+
+
+process = subprocess.Popen(['/usr/bin/vcgencmd', 'measure_temp'], stdout=subprocess.PIPE)
+output, _error = process.communicate()
+temperature = output.decode().split('=')[1].split("'")[0]
