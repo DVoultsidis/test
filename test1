@@ -1,0 +1,59 @@
+import json
+import paho.mqtt.client as mqtt
+import requests
+
+# MQTT Broker Information
+
+port = 8887
+topic = "mqtt/things/test/parking"
+
+
+# HTTP Endpoint Information
+endpoint_url = "https://in.lorawan.source.nwave.io/v1/ingest"
+
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code " + str(rc))
+    client.subscribe(topic)
+
+def on_message(client, userdata, msg):
+    try:
+        # Transform the received message to the "AFTER" format
+        before_data = json.loads(msg.payload.decode("utf-8"))
+        after_data = {
+            "dev_eui": before_data["DevEUI"],
+            "received_at": before_data["Time"],
+            "uplink_message": {
+                "f_port": before_data["FPort"],
+                "f_cnt": before_data["FCntUp"],
+                "f_payload": before_data.get("payload_hex", ""),
+                "trace_id": "e07d7812-869a-4f8d-bc17-2cd9c4bde94f"
+            }
+        }
+
+        # Convert the transformed data to JSON format
+        transformed_message = json.dumps(after_data, indent=2)
+
+        # Send the transformed message via HTTP
+        headers = {'x-Auth-Token': api_key, 'Content-Type': 'application/json'}
+        response = requests.post(endpoint_url, data=transformed_message, headers=headers)
+
+        print("Transformed Message Sent to HTTP Endpoint. Response:", response.status_code)
+        print("\nThe message sent is: \n",transformed_message,"\n")
+
+    except Exception as e:
+        print("Error processing message:", str(e))
+
+# Create an MQTT client
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
+# Set MQTT credentials
+client.username_pw_set(username, password)
+
+# Connect to the MQTT broker
+client.connect(broker_address, port, 60)
+
+# Start the MQTT loop
+client.loop_forever()
